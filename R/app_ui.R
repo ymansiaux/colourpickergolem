@@ -10,7 +10,19 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     fluidPage(
-      h1("colorpickerbetweenmodules")
+      fluidRow(
+        column(width = 6,
+               h1("module 1 output"),
+               mod_module_graph1_ui("module_graph1_1")
+
+               ),
+
+        column(width = 6,
+               h1("module 2 output"),
+               mod_module_graph2_ui("module_graph2_1")
+        )
+      )
+
     )
   )
 }
