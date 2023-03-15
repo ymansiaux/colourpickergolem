@@ -10,6 +10,11 @@ app_ui <- function(request) {
     golem_add_external_resources(),
     # Your application UI logic
     fluidPage(
+
+      fluidRow(
+        uiOutput(outputId = ("select_colors"))
+      ),
+
       fluidRow(
         column(width = 6,
                h1("module 1 output"),

@@ -9,138 +9,116 @@
 #' @importFrom shiny NS tagList
 #' @import ggplot2
 #' @import colourpicker
-mod_module_graph1_ui <- function(id){
+#' @importFrom dplyr filter
+mod_module_graph1_ui <- function(id) {
   ns <- NS(id)
-  tagList(
-    fluidRow(
-      column(width = 12,
-             actionButton(ns("pause"), "Pause"),
+  tagList(fluidRow(column(
+    width = 12,
+    actionButton(ns("pause"), "Pause"),
 
-             # Sidebar with a slider input for number of bins
-             uiOutput(outputId = ns("select_colors"))
-      )
-    ) ,
+    # Sidebar with a slider input for number of bins
+    # uiOutput(outputId = ns("select_colors"))
+  )) ,
 
-    fluidRow(
-      column(width = 12,
-             plotOutput(ns("distPlot"), height = "1200px")
-      )
-    )
-
-  )
+  fluidRow(column(
+    width = 12,
+    plotOutput(ns("distPlot"), height = "1200px")
+  )))
 }
 
 #' module_graph1 Server Functions
 #'
 #' @noRd
-mod_module_graph1_server <- function(id, r_global){
-  moduleServer( id, function(input, output, session){
-    ns <- session$ns
+mod_module_graph1_server <-
+  function(id, r_global, data, col_used_to_color) {
+    moduleServer(id, function(input, output, session) {
+      ns <- session$ns
 
-    observe(print(reactiveValuesToList(input)))
-    observeEvent(input$pause, browser())
+      observe(print(reactiveValuesToList(input)))
+      observeEvent(input$pause, browser())
 
-    data <- reactive(iris)
+      r_local <- reactiveValues()
 
-    distinct_values_for_which_colors_are_required <- reactive(as.character(unique(data()[["Species"]])))
+      observeEvent(TRUE, once = TRUE, {
+        r_local$distinct_values_for_which_colors_are_required <-
+          as.character(unique(data[[col_used_to_color]]))
+        r_local$input_names <-
+          remove_special_characters_in_input(r_local$distinct_values_for_which_colors_are_required)
 
-    cleaned_values_to_create_inputs <- reactive(
-      distinct_values_for_which_colors_are_required() %>%
-        gsub(x = .,
-             pattern = " ",
-             replacement = "_espacevide_") %>%
-        gsub(x = .,
-             pattern = "\\(",
-             replacement = "_parentheseouverte_") %>%
-        gsub(x = .,
-             pattern = "\\)",
-             replacement = "_parenthesefermee_")
-      # peut etre d'autres cas de figure ...
-    )
+        indices_of_missings_products <-
+          which(
+            !r_local$distinct_values_for_which_colors_are_required %in% r_global$product_colors$product
+          )
 
+        if (length(indices_of_missings_products) != 0) {
+          df_to_rbind_to_products_list <-
+            data.frame(
+              "inputId" = r_local$input_names[indices_of_missings_products],
+              "product" = r_local$distinct_values_for_which_colors_are_required[indices_of_missings_products],
+              "color" = NA_character_
+            )
 
-  output$distPlot2 <- renderPlot({
+          r_global$product_colors <- rbind(r_global$product_colors,
+                                           df_to_rbind_to_products_list)
+        }
 
-    ggplot(iris) +
-      aes(Sepal.Length, Sepal.Width) +
-      geom_line()
-
-  })
-
-
-
-
-    output$distPlot <- renderPlot({
-
-      # browser()
-      input_list <- reactiveValuesToList(input)
-
-      distinct_product_values <- distinct_values_for_which_colors_are_required() %>%
-        gsub(x = .,
-             pattern = " ",
-             replacement = "_espacevide_") %>%
-        gsub(x = .,
-             pattern = "\\(",
-             replacement = "_parentheseouverte_") %>%
-        gsub(x = .,
-             pattern = "\\)",
-             replacement = "_parenthesefermee_")
-
-      req(all(
-        distinct_product_values %in% names(input_list)
-      ))
-
-      color_vec <-
-        data.frame("product" = names(input_list[distinct_product_values]),
-                   "color" = unlist(input_list[distinct_product_values]))
-
-      # on rettoie a posteriori le nom des produits
-      color_vec$product <- color_vec$product %>%
-        gsub(x = .,
-             pattern = "_espacevide_",
-             replacement = " ") %>%
-        gsub(x = .,
-             pattern = "_parentheseouverte_",
-             replacement = "(") %>%
-        gsub(x = .,
-             pattern = "_parenthesefermee_",
-             replacement = ")")
-
-
-      ggplot(iris) +
-        aes(x = Sepal.Length, y = Sepal.Width, colour = Species) +
-        geom_point() +
-        scale_color_manual(values = color_vec$color, breaks = color_vec$name)
-
-    })
-
-    mypalette <- sample(colors(), 20, replace = FALSE)
-
-    output$select_colors <- renderUI({
-      # distinct_values <- as.character(unique(data()[["Species"]]))
-
-      # browser()
-
-      nvalues <-
-        length(distinct_values_for_which_colors_are_required())
-
-      lapply(1:nvalues, function(i) {
-        colourInput(
-          inputId = session$ns(cleaned_values_to_create_inputs()[i]),
-          paste("Colour for:", distinct_values_for_which_colors_are_required()[i]),
-          palette = "limited",
-          allowedCols = mypalette,
-          value = mypalette[i]
-
-          # colors()[i * sample(2:20, size = 1)]
-        )
+        r_global$product_colors <-
+          r_global$product_colors[!is.na(r_global$product_colors$product), ]
 
       })
 
-    })
 
-  })
-}
+      # output$select_colors <- renderUI({
+      #   nvalues <- nrow(r_global$product_colors)
+      #
+      #   indices_of_missing_colors <-
+      #     which(is.na(r_global$product_colors$color))
+      #   r_global$product_colors$color[indices_of_missing_colors] <-
+      #     r_global$default_palette[indices_of_missing_colors]
+      #
+      #   lapply(1:nvalues, function(i) {
+      #     colourInput(
+      #       inputId = session$ns(r_global$product_colors$inputId[i]),
+      #       paste("Colour for:", r_global$product_colors$product[i]),
+      #       palette = "limited",
+      #       allowedCols = r_global$default_palette,
+      #       value = r_global$product_colors$color[i]
+      #     )
+      #   })
+      # })
+
+      # il faut MAJ la reactive values des couleurs en fonction de ce que l'utilisateur a selectionne
+      # observeEvent(reactiveValuesToList(input)[r_global$product_colors$inputId], {
+      #   list_of_inputs <- reactiveValuesToList(input)
+      #
+      #   if (all(r_global$product_colors$inputId %in% names(list_of_inputs))) {
+      #     list_of_color_inputs <-
+      #       list_of_inputs[r_global$product_colors$inputId]
+      #
+      #     r_global$product_colors$color <-
+      #       unlist(list_of_color_inputs)
+      #
+      #   }
+      #
+      # })
+
+      output$distPlot <- renderPlot({
+        ggplot(iris) +
+          aes(x = Sepal.Length,
+              y = Sepal.Width,
+              colour = Species) +
+          geom_point() +
+          scale_color_manual(
+            values = r_global$product_colors$color,
+            breaks = r_global$product_colors$product
+          ) +
+          theme_bw()
+
+      })
+
+
+    })
+  }
 
 ## To be copied in the UI
 # mod_module_graph1_ui("module_graph1_1")
