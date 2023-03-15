@@ -31,7 +31,7 @@ mod_module_graph2_ui <- function(id){
 #' module_graph2 Server Functions
 #'
 #' @noRd
-mod_module_graph2_server <- function(id, r_global, data){
+mod_module_graph2_server <- function(id, r_global, data, col_used_to_color){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
 
