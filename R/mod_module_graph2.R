@@ -21,7 +21,7 @@ mod_module_graph2_ui <- function(id){
 
     fluidRow(
       column(width = 12,
-             plotOutput(ns("distPlot"), height = "1200px")
+             plotOutput(ns("distPlotTOTO"), height = "1200px")
       )
     )
 
@@ -31,9 +31,18 @@ mod_module_graph2_ui <- function(id){
 #' module_graph2 Server Functions
 #'
 #' @noRd
-mod_module_graph2_server <- function(id, r_global){
+mod_module_graph2_server <- function(id, r_global, data){
   moduleServer( id, function(input, output, session){
     ns <- session$ns
+
+    output$distPlotTOTO <- renderPlot({
+      ggplot(iris) +
+        aes(x = Sepal.Length, y = Sepal.Width, colour = Species) +
+        geom_line() +
+        scale_color_manual(values = r_global$product_colors$color, breaks = r_global$product_colors$product) +
+        theme_bw()
+
+    })
 
   })
 }
